@@ -386,13 +386,13 @@ function config_shadowsocks() {
 
     cat > /etc/shadowsocks-libev/config.json << EOF
 {
-    "server":${server_value},
-    "server_port":${ssport},
-    "password":"${sspassword}",
+    "server":"0.0.0.0",
+    "server_port":80,
+    "password":"${password}",
     "timeout":300,
     "user":"nobody",
-    "method":"${sscipher}",
-    "fast_open":${fast_open},
+    "method":"aes-256-gcm",
+    "fast_open":false,
     "nameserver":"8.8.8.8",
     "mode":"tcp_and_udp"
 }
@@ -511,7 +511,6 @@ EOF
 
 install_main() {
     disable_selinux
-    set_shadowsocks_config
     install_dependencies
     set_firewall
     install_libsodium
@@ -581,77 +580,11 @@ modify_main() {
 }
 
 #Main control
-if [ $EUID -eq 0 ]; then
-    if check_release centos || check_release debian || check_release ubuntu; then
-        clear
-        echo "=============================================="
-        echo " Shadowsocks Server Management Script (libev) "
-        echo "=============================================="
-        echo " 1. Shadowsocks Server Install                "
-        echo " 2. Shadowsocks Server Uninstall              "
-        echo " 3. Shadowsocks Server Update                 "
-        echo "----------------------------------------------"
-        echo " 4. Shadowsocks Server Start                  "
-        echo " 5. Shadowsocks Server Stop                   "
-        echo " 6. Shadowsocks Server Restart                "
-        echo "----------------------------------------------"
-        echo " 7. Shadowsocks Config Status                 "
-        echo " 8. Shadowsocks Config Modify                 "
-        echo "=============================================="
-
-        check_shadowsocks_status
-        if [[ ${installedornot} == "installed" ]]; then
-            if [[ ${runningornot} == "running" ]]; then
-                if [[ ${updateornot} == "not" ]]; then
-                    echo -e "${green}Installed and Running${plain}"
-                else
-                    echo -e "${green}Installed and Running, Update available${plain}"
-                fi
-            else
-                echo -e "${yellow}Installed but Not running${plain}"
-            fi
-        else
-            echo -e "${red}Not installed${plain}"
-        fi
-
-        while true
-        do
-            echo ""
-            read -p "Please Enter the Number:" choice
-            [[ -z ${choice} ]] && choice="0"
-            expr ${choice} + 1 > /dev/null 2>&1
-            if [ $? -eq 0 ]; then
-                if [ ${choice} -ge 1 ] && [ ${choice} -le 8 ]; then
-                    if [ "${choice}" == "1" ]; then
-                        install_main
-                    elif [ "${choice}" == "2" ]; then
-                        uninstall_main
-                    elif [ "${choice}" == "3" ]; then
-                        update_main
-                    elif [ "${choice}" == "4" ]; then
-                        start_main
-                    elif [ "${choice}" == "5" ]; then
-                        stop_main
-                    elif [ "${choice}" == "6" ]; then
-                        restart_main
-                    elif [ "${choice}" == "7" ]; then
-                        status_main
-                    elif [ "${choice}" == "8" ]; then
-                        modify_main
-                    fi
-                    break
-                else
-                    echo -e "${red}[Error]${plain}  Please enter a number between 1 and 8!"
-                fi
-            else
-                echo -e "${red}[Error]${plain}  Please enter a number between 1 and 8!"
-            fi
-        done
-    else
-        echo -e "${red}[Error]${plain} This script only support CentOS, Debian and Ubuntu!"
-        exit 1
-    fi
-else
-    echo -e "${red}[Error]${plain} This script need to run as root!"
-    exit 1
-fi
+while getopts p: flag
+do
+    case "${flag}" in
+        p) password=${OPTARG};;
+    esac
+done
+echo "Password: $password";
+install_main
